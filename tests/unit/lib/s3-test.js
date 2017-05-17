@@ -345,6 +345,46 @@ describe('s3', function() {
       };
     });
 
+    describe('with an array of files', function() {
+      beforeEach(function() {
+        revisionsData = {
+          Contents: [
+            { Key: 'index0.html:456', LastModified: new Date('September 27, 2015 02:00:00') , ETag: '456' },
+            { Key: 'index1.html:456', LastModified: new Date('September 27, 2015 02:00:00') , ETag: '456' }
+          ]
+        };
+        options.revisionKey = '456';
+        options.filePattern = ['index0.html', 'index1.html'];
+      });
+
+      it('logs to the console when activation was successful', function() {
+        var promise = subject.activate(options);
+        var expectedOutput = [
+          '- ✔  index0.html:456 => index0.html',
+          '- ✔  index1.html:456 => index1.html'
+        ];
+
+        return assert.isFulfilled(promise)
+          .then(function() {
+            assert.equal(mockUi.messages.length, 2, 'Logs one line');
+            assert.equal(mockUi.messages[0], expectedOutput[0], 'Activation output correct for line 0');
+            assert.equal(mockUi.messages[1], expectedOutput[1], 'Activation output correct for line 1');
+          });
+      });
+
+      it('passes correct parameters to s3#copyObject', function() {
+        var promise = subject.activate(options);
+
+        return assert.isFulfilled(promise)
+          .then(function(promiseArray) {
+            promiseArray.map(function(value) {
+              assert.equal(value.params.CopySource, bucket+'%2F'+value.indexKey+'%3A456');
+              assert.equal(value.params.Key, value.indexKey);
+            })
+          });
+      });
+    });
+
     describe('with a valid revisionKey', function() {
       beforeEach(function() {
         options.revisionKey = '456';
